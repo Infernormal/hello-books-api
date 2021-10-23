@@ -1,65 +1,46 @@
-from flask import Blueprint, jsonify
-
-class Book:
-    def __init__(self, id, title, description):
-        self.id = id
-        self.title = title
-        self.description = description
-
-books = [
-    Book(1, "Generation P", "A fantasy novel set in an imaginary world."),
-    Book(2, "Lord of the Rings", "A fantasy novel set in an imaginary world."),
-    Book(3, "Fairytales", "A fantasy novel set in an imaginary world.")
-] 
-
-hello_world_bp = Blueprint("hello_world", __name__)
+from flask.globals import session
+from app import db
+from app.models.book import Book
+from flask import Blueprint, jsonify, make_response, request
 
 books_bp = Blueprint("books_bp", __name__,url_prefix="/books")
 
-@books_bp.route("", methods = ["GET"])
+@books_bp.route("",methods=["POST", "GET"])
 def handle_books():
-    books_response = []
-    for book in books:
-        books_response.append(
-            {
+    if request.method == "POST":
+        request_body = request.get_json()
+        if "title" not in request_body or "description" not in request_body:
+            return make_response("Invalid Request", 400)
+        
+        new_book = Book(
+        title = request_body["title"],
+        description = request_body["description"]
+    )
+        db.session.add(new_book)
+        db.session.commit()
+        return make_response(
+            f"Book {new_book.title} created",201)
+    elif request.method == "GET":
+        books = Book.query.all()
+        books_response = []
+        for book in books:
+            books_response.append(
+                {
+                "id": book.id,
+                "title": book.title,
+                "description": book.description
+                }
+            )
+        return jsonify(books_response)
+
+@books_bp.route("/<book_id>", methods = ["GET"])
+def handle_book(book_id):
+    book = Book.query.get(book_id)
+    if book is None:
+        return make_response(f"Book with id {book_id} not found",404)
+    
+    return {
             "id": book.id,
             "title": book.title,
             "description": book.description
             }
-        )
-    return jsonify(books_response)
-
-@books_bp.route("/<book_id>", methods = ["GET"])
-def handle_book(book_id):
-    book_id = int(book_id)
-    for book in books:
-        if book.id == book_id:
-            return {
-                "id": book.id,
-                "title": book.title,
-                "description": book.description
-            }
-
-@hello_world_bp.route("/hello-world", methods=["GET"])
-def say_hello_world():
-    my_beautiful_response_body = "Hello, World!"
-    return my_beautiful_response_body
-
-@hello_world_bp.route("/hello-world/JSON", methods=["GET"])
-def hello_word_json():
-    return {
-        "name": "Karina",
-        "message": "Hi!",
-        "hobbies": ["Cooking", "Watching movies"],
-    }, 200
-
-@hello_world_bp.route("/broken-endpoint-with-broken-server-code")
-def broken_endpoint():
-    response_body = {
-        "name": "Ada Lovelace",
-        "message": "Hello!",
-        "hobbies": ["Fishing", "Swimming", "Watching Reality Shows"]
-    }
-    new_hobby = "Surfing"
-    response_body["hobbies"].append(new_hobby)
-    return response_body
