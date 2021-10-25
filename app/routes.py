@@ -33,14 +33,38 @@ def handle_books():
             )
         return jsonify(books_response)
 
-@books_bp.route("/<book_id>", methods = ["GET"])
+@books_bp.route("/<book_id>", methods = ["GET", "PUT", "DELETE"])
 def handle_book(book_id):
     book = Book.query.get(book_id)
-    if book is None:
-        return make_response(f"Book with id {book_id} not found",404)
     
-    return {
+    if request.method == "GET":
+        return {
             "id": book.id,
             "title": book.title,
             "description": book.description
             }
+    elif request.method == "PUT":
+        request_body = request.get_json()
+        try:
+            book.title = request_body["title"]
+            book.description = request_body["description"]
+
+        # db.session.add(book)
+            db.session.commit()
+            return {
+        "id": book.id,
+            "title": book.title,
+            "description": book.description
+    },200
+        except KeyError:
+            return {
+            "message": "Request is invalid"
+        },400
+
+    elif request.method == "DELETE":
+        db.session.delete(book)
+        db.session.commit()
+        return {
+            "message": f"Book with title {book.title} has been deleted"
+        }, 200
+
