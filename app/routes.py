@@ -21,7 +21,11 @@ def handle_books():
         return make_response(
             f"Book {new_book.title} created",201)
     elif request.method == "GET":
-        books = Book.query.all()
+        title_from_url = request.args.get("title")
+        if title_from_url:
+            books = Book.query.filter_by(title=title_from_url)
+        else:
+            books = Book.query.all()
         books_response = []
         for book in books:
             books_response.append(
@@ -36,7 +40,10 @@ def handle_books():
 @books_bp.route("/<book_id>", methods = ["GET", "PUT", "DELETE"])
 def handle_book(book_id):
     book = Book.query.get(book_id)
-    
+    if book == None:
+        return {
+            "message":"NOT FOUND"}, 404
+
     if request.method == "GET":
         return {
             "id": book.id,
